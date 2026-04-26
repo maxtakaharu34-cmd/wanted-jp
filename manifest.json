@@ -1,0 +1,18 @@
+{
+  "name": "指名手配ジェネレーター",
+  "short_name": "指名手配",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#3d2817",
+  "theme_color": "#3d2817",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
