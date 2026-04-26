@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#3d2817" />
+<title>指名手配ジェネレーター</title>
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&family=Kosugi+Maru&family=Noto+Serif+JP:wght@900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box}html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{font-family:"Kosugi Maru",system-ui,sans-serif;color:#3d2817;background:#3d2817 url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23a8825a" width="100" height="100"/><circle cx="20" cy="30" r="2" fill="%237a5c3a" opacity=".4"/><circle cx="60" cy="70" r="3" fill="%237a5c3a" opacity=".3"/></svg>');touch-action:manipulation;user-select:none;-webkit-tap-highlight-color:transparent}
+#app{display:flex;flex-direction:column;height:100dvh;padding:10px;gap:8px;max-width:480px;margin:0 auto}
+.poster{flex:1;background:#e8d4a8;border:6px double #3d2817;border-radius:4px;padding:14px;box-shadow:0 0 0 3px #8b6f47,4px 6px 12px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
+.poster::before{content:'';position:absolute;inset:8px;border:1px dashed #3d2817;pointer-events:none;border-radius:2px}
+.poster .top{font-family:"Noto Serif JP",serif;font-weight:900;font-size:32px;letter-spacing:.4em;color:#3d2817;text-align:center;line-height:1;text-decoration:underline;text-decoration-thickness:3px}
+.poster .sub{font-family:"Noto Serif JP",serif;font-size:13px;color:#8b3a3a;letter-spacing:.3em}
+.cam-wrap{flex:1;width:90%;max-height:300px;aspect-ratio:1;background:#000;border:3px solid #3d2817;overflow:hidden;position:relative;filter:contrast(1.2) saturate(0.5) sepia(0.3)}
+video,canvas,img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.snap{display:none}
+.snap.show{display:block}
+.crime{font-family:"Noto Serif JP",serif;font-size:20px;font-weight:900;color:#8b3a3a;text-align:center;letter-spacing:.15em}
+.bounty{font-family:"Noto Serif JP",serif;font-size:36px;font-weight:900;color:#3d2817;text-align:center;line-height:1}
+.bounty small{font-size:14px}
+.note-poster{font-family:"Noto Serif JP",serif;font-size:11px;color:#3d2817;text-align:center;line-height:1.6}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.actions button{background:#3d2817;color:#e8d4a8;border:3px solid #1a0f08;padding:10px 18px;font-family:"Noto Serif JP",serif;font-weight:900;font-size:13px;border-radius:4px;cursor:pointer;box-shadow:2px 2px 0 #1a0f08;letter-spacing:.1em}
+.actions .share{background:#8b3a3a;color:#fff}
+.actions button:active{transform:translate(2px,2px);box-shadow:0 0 0 #1a0f08}
+.actions button:disabled{opacity:.4}
+.note{font-size:9px;text-align:center;color:#fff;opacity:.7}
+.err{padding:8px;background:rgba(255,0,0,.3);color:#fff;border-radius:6px;font-size:12px;display:none}
+.err.show{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="poster">
+  <div class="top">指 名 手 配</div>
+  <div class="sub">WANTED</div>
+  <div class="cam-wrap" id="wrap">
+    <video id="vid" autoplay playsinline muted></video>
+    <canvas id="cv" class="snap" width="400" height="400"></canvas>
+  </div>
+  <div class="crime" id="crime">— 罪状 —</div>
+  <div class="bounty"><span id="bty">¥ 0</span><small>万円</small></div>
+  <div class="note-poster" id="noteP">この者を見つけた者には<br/>賞金を与える</div>
+</div>
+<div class="actions">
+  <button id="btn-go">📷 タップで作成</button>
+  <button id="btn-save" disabled>📥 保存</button>
+  <button id="btn-share" class="share" disabled>🔗 シェア</button>
+</div>
+<div class="note">※ジョークアプリ。実物画像は端末内処理のみ</div>
+<div class="err" id="err"></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const SHARE_URL='https://maxtakaharu34-cmd.github.io/wanted-jp/';
+const CRIMES=['冷蔵庫プリン泥棒','LINE既読スルー罪','大遅刻常習犯','宿題やってない罪','話聞いてない罪','満員電車のリュック罪','テレビCMで音量上げ罪','友達の昼食横取り罪','上司の前で寝た罪','奢られて当然顔の罪','ペット顔似罪','道で声でかい罪','昭和の発言罪','タピオカ投げ罪','並ばない罪','ネタバレ罪','すぐ既読罪','長電話常習犯','返信3日後罪','道路族の罪','早朝鼻歌の罪'];
+const $=(id)=>document.getElementById(id);
+let stream=null,lastCrime=null,lastBty=null;
+async function startCam(){
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:480,height:480},audio:false});
+    $('vid').srcObject=stream;await $('vid').play();return true;
+  }catch(e){$('err').textContent='カメラ起動失敗: '+e.message;$('err').classList.add('show');return false}
+}
+async function go(){
+  const btn=$('btn-go');
+  if(!stream){btn.textContent='起動中…';btn.disabled=true;
+    const ok=await startCam();btn.disabled=false;
+    if(!ok){btn.textContent='📷 タップで作成';return}
+    await new Promise(r=>setTimeout(r,300));
+  }
+  const v=$('vid'),cv=$('cv');
+  cv.width=400;cv.height=400;
+  const ctx=cv.getContext('2d');
+  // mirror, then process
+  ctx.save();ctx.translate(400,0);ctx.scale(-1,1);ctx.drawImage(v,0,0,400,400);ctx.restore();
+  // apply contrast/sepia via filter on canvas data
+  const d=ctx.getImageData(0,0,400,400);
+  const dat=d.data;
+  let h=0x811c9dc5;
+  for(let i=0;i<dat.length;i+=4){
+    const v0=(dat[i]+dat[i+1]+dat[i+2])/3;
+    // sepia
+    dat[i]=Math.min(255,v0*1.2);dat[i+1]=Math.min(255,v0*0.95);dat[i+2]=Math.min(255,v0*.7);
+    if(i%64===0){h^=dat[i];h=Math.imul(h,16777619)>>>0}
+  }
+  ctx.putImageData(d,0,0);
+  cv.classList.add('show');
+  $('vid').style.display='none';
+  const crime=CRIMES[h%CRIMES.length];
+  const bty=(50+(h%950))*10;
+  $('crime').textContent='罪状: '+crime;
+  $('bty').textContent='¥ '+bty.toLocaleString();
+  lastCrime=crime;lastBty=bty;
+  $('btn-go').textContent='🔄 もう一度';
+  $('btn-save').disabled=false;$('btn-share').disabled=false;
+  beep(220,.5,'sawtooth',.18);
+}
+let ac=null;const en=()=>{if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();return ac};
+const beep=(f,d,t='square',g=.13)=>{const a=en();const o=a.createOscillator();const gn=a.createGain();o.type=t;o.frequency.value=f;gn.gain.value=g;gn.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);o.connect(gn).connect(a.destination);o.start();o.stop(a.currentTime+d)};
+function save(){
+  const cv=$('cv');cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='wanted.png';a.click()});
+}
+$('btn-go').addEventListener('click',()=>{en();go()});
+$('btn-save').addEventListener('click',save);
+$('btn-share').addEventListener('click',()=>{
+  if(!lastCrime)return;
+  const txt=`指名手配されたw 罪状「${lastCrime}」賞金${lastBty}万円 #指名手配`;
+  window.open(`https://x.com/intent/post?text=${encodeURIComponent(txt)}&url=${encodeURIComponent(SHARE_URL)}`,'_blank','noopener,noreferrer');
+});
+})();
+</script>
+</body>
+</html>
